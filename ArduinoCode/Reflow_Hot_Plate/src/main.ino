@@ -157,6 +157,8 @@ int aLastState = 0;
 //Adafruit_SSD1306 display1(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 U8G2_SH1106_128X64_NONAME_F_HW_I2C display1(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 U8G2_SH1106_128X64_NONAME_F_HW_I2C display2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+long timeLastPressed = 0;
+const long timeBeforeDisable = 10000;
 
 const double Vref = 3.27; //power supply voltage (3.3 V rail) -STM32 ADC pin is NOT 5 V tolerant
 double Vout; //Voltage divider output
@@ -638,7 +640,7 @@ void page_MENU_TIME(){//=================================================REFLOW_
       subscribeMessage();
       previousTime = millis() / 1000.0;
     }
-    //yield(); // Add this line at the end of the loop
+    yield(); // Add this line at the end of the loop
   }
 }
 
@@ -838,7 +840,16 @@ void sets_Save()
 }
 void updateSettings()
 {
-
+  if(millis() - timeLastPressed > timeBeforeDisable)
+  {
+    display1.ssd1306_command(SSD1306_DISPLAYOFF);
+    display2.ssd1306_command(SSD1306_DISPLAYOFF);
+  }
+  else
+  {
+    display1.ssd1306_command(SSD1306_DISPLAYON);
+    display2.ssd1306_command(SSD1306_DISPLAYON);
+  }
 
   if(settings.power)
   {
@@ -950,6 +961,10 @@ void publishMessage() //Homeassistant
     client.publish(privates.topicTargetTemp, messages);
     snprintf(messages, 5, "%f", DutyCycle/4096.0 * 100.0);
     client.publish(privates.topicDutyCycle, messages);
+    snprintf(messages, 5, "%f", settings.Kp_element);
+    client.publish(privates.topicKp, messages);
+    snprintf(messages, 5, "%f", settings.Ki_element);
+    client.publish(privates.topicKi, messages);
 }
 
 void subscribeMessage() //Homeassistant
